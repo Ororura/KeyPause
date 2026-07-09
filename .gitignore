@@ -1,0 +1,23 @@
+# Build artifacts
+keyboard-cleaner
+keyboard-cleaner-tray
+*.o
+_cgo_*.o
+
+# Go local cache
+.gocache/
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# AI / agent tooling
+AGENTS.md
+CLAUDE.md
+.cursor/
+.opencode/
+.aider*
+.continue/
