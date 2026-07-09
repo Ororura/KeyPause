@@ -1,6 +1,7 @@
 # Build artifacts
 keyboard-cleaner
 keyboard-cleaner-tray
+dist/
 *.o
 _cgo_*.o
 

@@ -1,41 +1,92 @@
 # KeyPause
 
-KeyPause is a lightweight macOS utility that temporarily blocks keyboard input, so you can safely clean your keyboard without accidental typing, shortcuts, or media key actions.
+KeyPause is a lightweight macOS menu bar app that temporarily blocks keyboard input, so you can safely clean your keyboard without accidental typing, shortcuts, or media key actions.
 
-It can run as a command-line tool for timed cleaning sessions or as a menu bar app with quick start/stop controls.
+The app is distributed as a standard macOS `.app` bundle and can be packaged into a drag-and-drop `.dmg` installer.
 
 ## Features
 
 - Blocks regular keyboard key down and key up events.
 - Blocks modifier key changes.
 - Blocks MacBook media keys such as volume and playback controls.
-- Supports timed cleaning sessions.
-- Can be stopped early with `Ctrl+C` in CLI mode or from the tray menu.
-- Uses a macOS menu bar tray app for quick access.
+- Runs as a menu bar app without a Dock icon.
+- Supports timed cleaning sessions from the tray menu.
+- Can be stopped manually at any time.
+- Also includes an optional CLI entrypoint for development or terminal usage.
 
 ## Requirements
 
-- macOS
-- Go 1.26.4 or newer
-- Accessibility permission for the terminal app and/or the built binary
+- macOS 12 or newer
+- Go 1.26.4 or newer for building from source
+- Accessibility permission for `KeyPause.app`
 
 KeyPause uses a macOS `CGEventTap`, so Accessibility permission is required. If permission is missing, macOS will prompt you to enable it in System Settings.
 
-## Build
+## Build The App
+
+Build `KeyPause.app`:
+
+```bash
+./scripts/build-app.sh
+```
+
+The app bundle will be created at:
+
+```text
+dist/KeyPause.app
+```
+
+Run it locally:
+
+```bash
+open dist/KeyPause.app
+```
+
+## Build The DMG
+
+Build a drag-and-drop DMG installer:
+
+```bash
+./scripts/build-dmg.sh
+```
+
+The DMG will be created at:
+
+```text
+dist/KeyPause.dmg
+```
+
+## Installation
+
+1. Open `dist/KeyPause.dmg`.
+2. Drag `KeyPause.app` to `Applications`.
+3. Start `KeyPause` from `Applications`.
+4. Grant Accessibility permission in System Settings when prompted.
+
+After startup, KeyPause appears in the macOS menu bar. The tray menu includes:
+
+- `Start for 30s`
+- `Start for 1m`
+- `Stop`
+- `Quit`
+
+## Code Signing
+
+The build script uses ad-hoc signing:
+
+```bash
+codesign --force --deep --sign - dist/KeyPause.app
+```
+
+This is enough for local use. Public distribution usually requires an Apple Developer ID certificate, hardened runtime, notarization, and stapling.
+
+## CLI Mode
 
 Build the CLI version:
 
 ```bash
 go build -o keyboard-cleaner ./cmd
 ```
-
-Build the menu bar version:
-
-```bash
-go build -o keyboard-cleaner-tray ./cmd/tray
-```
-
-## Usage
 
 Run a 30-second cleaning session from the terminal:
 
@@ -49,19 +100,6 @@ Run a 1-minute cleaning session:
 ./keyboard-cleaner -time 1m
 ```
 
-Start the menu bar app:
-
-```bash
-./keyboard-cleaner-tray
-```
-
-The tray menu includes:
-
-- `Start for 30s`
-- `Start for 1m`
-- `Stop`
-- `Quit`
-
 ## Testing
 
 Run all tests:
@@ -74,6 +112,9 @@ go test ./...
 
 - `cmd/main.go` contains the CLI entrypoint.
 - `cmd/tray/main.go` contains the menu bar app entrypoint.
+- `build/macos/Info.plist` contains the macOS app bundle metadata.
+- `scripts/build-app.sh` builds `KeyPause.app`.
+- `scripts/build-dmg.sh` builds `KeyPause.dmg`.
 - `internal/app` contains the application orchestration logic.
 - `internal/blocker/macos` contains the native macOS event tap implementation.
 - `internal/tray` contains tray controller logic and icon generation.
@@ -82,42 +123,93 @@ go test ./...
 
 # KeyPause
 
-KeyPause - легкая утилита для macOS, которая временно блокирует ввод с клавиатуры, чтобы можно было безопасно почистить клавиатуру без случайного набора текста, горячих клавиш или срабатывания медиа-клавиш.
+KeyPause - легкое menu bar приложение для macOS, которое временно блокирует ввод с клавиатуры, чтобы можно было безопасно почистить клавиатуру без случайного набора текста, горячих клавиш или срабатывания медиа-клавиш.
 
-Приложение можно запускать как CLI-утилиту с таймером или как приложение в menu bar с быстрым управлением через tray-меню.
+Приложение собирается как стандартный macOS `.app` bundle и может быть упаковано в drag-and-drop `.dmg` установщик.
 
 ## Возможности
 
 - Блокирует обычные нажатия и отпускания клавиш.
 - Блокирует изменения modifier-клавиш.
 - Блокирует медиа-клавиши MacBook, включая громкость и управление воспроизведением.
-- Поддерживает сессии очистки по таймеру.
-- Можно остановить раньше через `Ctrl+C` в CLI-режиме или через tray-меню.
-- Есть menu bar приложение для быстрого запуска.
+- Работает как menu bar приложение без иконки в Dock.
+- Поддерживает сессии очистки по таймеру через tray-меню.
+- Можно остановить блокировку вручную в любой момент.
+- Также содержит optional CLI entrypoint для разработки или запуска из терминала.
 
 ## Требования
 
-- macOS
-- Go 1.26.4 или новее
-- Accessibility permission для терминала и/или собранного бинарника
+- macOS 12 или новее
+- Go 1.26.4 или новее для сборки из исходников
+- Accessibility permission для `KeyPause.app`
 
 KeyPause использует macOS `CGEventTap`, поэтому приложению нужен доступ Accessibility. Если доступа нет, macOS предложит включить его в System Settings.
 
-## Сборка
+## Сборка Приложения
+
+Собрать `KeyPause.app`:
+
+```bash
+./scripts/build-app.sh
+```
+
+App bundle будет создан здесь:
+
+```text
+dist/KeyPause.app
+```
+
+Запустить локально:
+
+```bash
+open dist/KeyPause.app
+```
+
+## Сборка DMG
+
+Собрать drag-and-drop DMG установщик:
+
+```bash
+./scripts/build-dmg.sh
+```
+
+DMG будет создан здесь:
+
+```text
+dist/KeyPause.dmg
+```
+
+## Установка
+
+1. Откройте `dist/KeyPause.dmg`.
+2. Перетащите `KeyPause.app` в `Applications`.
+3. Запустите `KeyPause` из `Applications`.
+4. Разрешите Accessibility permission в System Settings, когда macOS попросит доступ.
+
+После запуска KeyPause появляется в menu bar. В tray-меню доступны пункты:
+
+- `Start for 30s`
+- `Start for 1m`
+- `Stop`
+- `Quit`
+
+## Code Signing
+
+Скрипт сборки использует ad-hoc signing:
+
+```bash
+codesign --force --deep --sign - dist/KeyPause.app
+```
+
+Этого достаточно для локального использования. Для публичного распространения обычно нужны Apple Developer ID certificate, hardened runtime, notarization и stapling.
+
+## CLI Режим
 
 Собрать CLI-версию:
 
 ```bash
 go build -o keyboard-cleaner ./cmd
 ```
-
-Собрать menu bar версию:
-
-```bash
-go build -o keyboard-cleaner-tray ./cmd/tray
-```
-
-## Использование
 
 Запустить 30-секундную сессию очистки из терминала:
 
@@ -131,19 +223,6 @@ go build -o keyboard-cleaner-tray ./cmd/tray
 ./keyboard-cleaner -time 1m
 ```
 
-Запустить menu bar приложение:
-
-```bash
-./keyboard-cleaner-tray
-```
-
-В tray-меню доступны пункты:
-
-- `Start for 30s`
-- `Start for 1m`
-- `Stop`
-- `Quit`
-
 ## Тесты
 
 Запустить все тесты:
@@ -152,10 +231,13 @@ go build -o keyboard-cleaner-tray ./cmd/tray
 go test ./...
 ```
 
-## Структура проекта
+## Структура Проекта
 
 - `cmd/main.go` содержит CLI entrypoint.
 - `cmd/tray/main.go` содержит entrypoint menu bar приложения.
+- `build/macos/Info.plist` содержит metadata macOS app bundle.
+- `scripts/build-app.sh` собирает `KeyPause.app`.
+- `scripts/build-dmg.sh` собирает `KeyPause.dmg`.
 - `internal/app` содержит orchestration-логику приложения.
 - `internal/blocker/macos` содержит нативную macOS event tap реализацию.
 - `internal/tray` содержит controller tray-режима и генерацию иконки.
