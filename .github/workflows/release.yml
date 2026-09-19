@@ -1,0 +1,90 @@
+name: KeyPause Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keypause-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Test, build, and publish release
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      CGO_ENABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Expected a tag like v0.1.0"
+            exit 1
+          fi
+
+          git fetch origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo "::error::Release tag must point to a commit merged into main"
+            exit 1
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build all Go packages
+        run: go build ./...
+
+      - name: Set app bundle version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION}" build/macos/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" build/macos/Info.plist
+
+      - name: Package macOS app and DMG
+        run: ./scripts/build-dmg.sh
+
+      - name: Verify and archive app
+        shell: bash
+        run: |
+          set -euo pipefail
+          codesign --verify --deep --strict dist/KeyPause.app
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/KeyPause.app/Contents/Info.plist)" = "${GITHUB_REF_NAME#v}"
+          test -s dist/KeyPause.dmg
+          ditto -c -k --sequesterRsrc --keepParent dist/KeyPause.app dist/KeyPause.app.zip
+          test -s dist/KeyPause.app.zip
+          (cd dist && shasum -a 256 KeyPause.dmg KeyPause.app.zip > SHA256SUMS)
+
+      - name: Create or update GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(dist/KeyPause.dmg dist/KeyPause.app.zip dist/SHA256SUMS)
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${files[@]}" \
+              --verify-tag \
+              --title "KeyPause ${GITHUB_REF_NAME#v}" \
+              --generate-notes
+          fi
