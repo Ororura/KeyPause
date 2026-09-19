@@ -6,20 +6,25 @@ APP_NAME="KeyPause"
 DIST_DIR="${ROOT_DIR}/dist"
 APP_DIR="${DIST_DIR}/${APP_NAME}.app"
 DMG_PATH="${DIST_DIR}/${APP_NAME}.dmg"
-TEMP_DMG="${DIST_DIR}/${APP_NAME}-temp.dmg"
 VOLUME_NAME="${APP_NAME}"
 
 "${ROOT_DIR}/scripts/build-app.sh"
 
-rm -f "${DMG_PATH}" "${TEMP_DMG}"
-hdiutil create -volname "${VOLUME_NAME}" -srcfolder "${APP_DIR}" -ov -format UDRW "${TEMP_DMG}" >/dev/null
+# Build the drag-and-drop DMG from a staging directory instead of mounting
+# a writable image. GitHub-hosted macOS runners may hold mounted images open,
+# causing hdiutil detach to fail with "Resource busy".
+STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/keypause-dmg.XXXXXX")"
+trap 'rm -rf "$STAGING_DIR"' EXIT
 
-DEVICE="$(hdiutil attach -readwrite -noverify -noautoopen "${TEMP_DMG}" | awk '/\/Volumes\// {print $1; exit}')"
-VOLUME_PATH="/Volumes/${VOLUME_NAME}"
+ditto "${APP_DIR}" "${STAGING_DIR}/${APP_NAME}.app"
+ln -s /Applications "${STAGING_DIR}/Applications"
 
-ln -s /Applications "${VOLUME_PATH}/Applications"
-hdiutil detach "${DEVICE}" >/dev/null
-hdiutil convert "${TEMP_DMG}" -format UDZO -imagekey zlib-level=9 -o "${DMG_PATH}" >/dev/null
-rm -f "${TEMP_DMG}"
+rm -f "${DMG_PATH}"
+hdiutil create \
+  -volname "${VOLUME_NAME}" \
+  -srcfolder "${STAGING_DIR}" \
+  -ov \
+  -format UDZO \
+  "${DMG_PATH}" >/dev/null
 
 echo "Built ${DMG_PATH}"
